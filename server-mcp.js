@@ -3,6 +3,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { spawn } from 'child_process';
+import http from 'http';
 
 const server = new Server({
   name: 'aistudio-mcp-server',
@@ -114,6 +115,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   throw new Error(`Unknown tool: ${request.params.name}`);
+});
+
+// Keep Render happy with a health check port
+const PORT = process.env.PORT || 3000;
+http.createServer((req, res) => {
+  res.writeHead(200);
+  res.end('ok');
+}).listen(PORT, () => {
+  console.error(`Health check server on port ${PORT}`);
 });
 
 async function main() {
