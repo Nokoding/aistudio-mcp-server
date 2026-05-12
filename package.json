@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node server.js",
     "dev": "ts-node src/index.ts",
     "inspector": "npm run build && npx --yes @modelcontextprotocol/inspector@latest node dist/index.js",
     "prepublishOnly": "npm run build"
