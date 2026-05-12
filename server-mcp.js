@@ -32,7 +32,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [{
       name: 'generate_image',
-      description: 'Generate an image using Gemini 3.1 Flash Image (Nano Banana 2)',
+      description: 'Generate an image using Gemini 3.1 Flash Image',
       inputSchema: {
         type: 'object',
         properties: {
@@ -80,6 +80,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 async function generateImage(prompt, aspect) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+  
+  // FIX: Use application/json as responseMimeType, not image/jpeg
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -87,7 +89,7 @@ async function generateImage(prompt, aspect) {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
         responseModalities: ['IMAGE'],
-        responseMimeType: 'image/jpeg'
+        responseMimeType: 'application/json'
       }
     })
   });
@@ -95,10 +97,14 @@ async function generateImage(prompt, aspect) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error?.message || `API error ${res.status}`);
 
+  // Extract the base64 image data from Gemini response
   const imgPart = data.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
   if (!imgPart) throw new Error('No image returned from Gemini');
 
-  return imgPart.inlineData;
+  return {
+    mimeType: imgPart.inlineData.mimeType,
+    data: imgPart.inlineData.data
+  };
 }
 
 const PORT = process.env.PORT || 3000;
@@ -132,7 +138,7 @@ http.createServer(async (req, res) => {
         const imgData = await generateImage(prompt, aspect);
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, image: imgData }));
+        res.end(JSON.stringify({ success: true, image: imgData.data, mimeType: imgData.mimeType }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: false, error: err.message }));
